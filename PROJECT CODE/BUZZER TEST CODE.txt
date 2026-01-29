@@ -1,0 +1,13 @@
+#define BUZZER 14   // D5
+
+void setup() {
+  pinMode(BUZZER, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(BUZZER, HIGH);  // buzzer ON
+  delay(500);
+
+  digitalWrite(BUZZER, LOW);   // buzzer OFF
+  delay(500);
+}

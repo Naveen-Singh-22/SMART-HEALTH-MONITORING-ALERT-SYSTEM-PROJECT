@@ -1,0 +1,221 @@
+// ESP8266 + MAX3010x improved SpO2 + BPM sketch
+// - Measures actual sampleRate when filling initial buffer
+// - Uses dynamic threshold + prominence + min distance (based on sampleRate) for BPM
+// - Uses ratio-of-ratios (RMS/DC) for SpO2 (approximate, tuned empirically)
+// Wiring (NodeMCU/Wemos): VIN->3.3V, GND->GND, SDA->D2 (GPIO4), SCL->D1 (GPIO5)
+// Serial Monitor: 115200
+// Make sure "SparkFun MAX3010x Particle Sensor Library" is installed.
+
+#include <Wire.h>
+#undef I2C_BUFFER_LENGTH
+#include "MAX30105.h"
+#include <math.h>
+
+#define SDA_PIN D2
+#define SCL_PIN D1
+#define BUFFER_SIZE 150   // increased window gives more robust HR/SpO2 (tradeoff: slower)
+                         // Try 100..250 depending on desired responsiveness vs stability
+
+MAX30105 particleSensor;
+int32_t redBuffer[BUFFER_SIZE];
+int32_t irBuffer[BUFFER_SIZE];
+int bufferHead = 0;
+float sampleRateHz = 100.0f; // will be measured during initial fill
+
+// Fill buffer and measure actual sampling rate (samples/sec)
+void fillInitialBuffer() {
+  Serial.println("Filling initial buffer and measuring sample rate...");
+  unsigned long tStart = millis();
+  for (int i = 0; i < BUFFER_SIZE; ++i) {
+    while (!particleSensor.available()) {
+      particleSensor.check();
+      delay(1);
+    }
+    redBuffer[i] = particleSensor.getRed();
+    irBuffer[i]  = particleSensor.getIR();
+    bufferHead = (bufferHead + 1) % BUFFER_SIZE;
+    delay(10); // this delay combined with library timing controls sample cadence
+  }
+  unsigned long tEnd = millis();
+  float seconds = (tEnd - tStart) / 1000.0f;
+  if (seconds <= 0.001f) seconds = 0.001f;
+  sampleRateHz = BUFFER_SIZE / seconds;
+  Serial.print("Measured sample rate: ");
+  Serial.print(sampleRateHz, 2);
+  Serial.println(" Hz");
+  Serial.println("Buffer ready.");
+}
+
+// Improved algorithm: compute SpO2 & HR from chronological arrays (length = len)
+void computeSpO2AndHR(const int32_t *irSeq, const int32_t *redSeq, int len,
+                      int *outSpO2, bool *okSpO2,
+                      int *outBPM, bool *okBPM) {
+  *okSpO2 = false; *okBPM = false;
+  if (len < 40) return;
+
+  // --- Smoothing (moving average window w) ---
+  const int w = 5; // smoothing window; must be odd
+  static double smIR[1024];
+  for (int i = 0; i < len; ++i) {
+    int lo = i - w/2; if (lo < 0) lo = 0;
+    int hi = i + w/2; if (hi >= len) hi = len - 1;
+    double s = 0; int ct = 0;
+    for (int j = lo; j <= hi; ++j) { s += irSeq[j]; ++ct; }
+    smIR[i] = s / ct;
+  }
+
+  // --- Dynamic threshold / prominence parameters ---
+  // compute mean and stddev of smoothed IR
+  double mean = 0, m2 = 0;
+  for (int i = 0; i < len; ++i) { double v = smIR[i]; mean += v; m2 += v*v; }
+  mean /= len;
+  double variance = (m2 / len) - (mean*mean);
+  if (variance < 0) variance = 0;
+  double stddev = sqrt(variance);
+  double maxv = smIR[0], minv = smIR[0];
+  for (int i = 1; i < len; ++i) { if (smIR[i] > maxv) maxv = smIR[i]; if (smIR[i] < minv) minv = smIR[i]; }
+
+  // threshold: a fraction between mean and max
+  double threshold = mean + 0.25 * (maxv - mean);
+  // require prominence at least this fraction of (max-min)
+  double minProminence = 0.1 * (maxv - minv);
+
+  // min distance between peaks (in samples): enforce at least 0.4s between peaks (=> 150 bpm max)
+  int minDist = (int)(sampleRateHz * 0.4f);
+  if (minDist < 6) minDist = 6;
+
+  // --- Peak finding with prominence & minDist ---
+  int peaks[512]; int pcount = 0;
+  for (int i = 1; i < len - 1; ++i) {
+    if (smIR[i] > smIR[i-1] && smIR[i] > smIR[i+1] && smIR[i] > threshold) {
+      // compute local prominence: height above local minima on both sides up to half minDist
+      int left = i-1; while (left > 0 && smIR[left] <= smIR[left+1]) --left;
+      int right = i+1; while (right < len-1 && smIR[right] <= smIR[right-1]) ++right;
+      double leftMin = smIR[left], rightMin = smIR[right];
+      double prominence = smIR[i] - max(leftMin, rightMin);
+      if (prominence >= minProminence) {
+        // enforce minDist from previous accepted peak
+        if (pcount == 0 || (i - peaks[pcount-1]) > minDist) {
+          peaks[pcount++] = i;
+          if (pcount >= 512) break;
+        }
+      }
+    }
+  }
+
+  // compute BPM from peak intervals
+  if (pcount >= 2) {
+    double totalIntervalSeconds = 0.0;
+    int intervals = 0;
+    for (int i = 1; i < pcount; ++i) {
+      totalIntervalSeconds += (peaks[i] - peaks[i-1]) / sampleRateHz;
+      intervals++;
+    }
+    if (intervals > 0) {
+      double avgInterval = totalIntervalSeconds / intervals;
+      double bpm = 60.0 / avgInterval;
+      if (bpm > 30 && bpm < 220) {
+        *outBPM = (int)(bpm + 0.5);
+        *okBPM = true;
+      } else {
+        *okBPM = false;
+      }
+    }
+  } else {
+    *okBPM = false;
+  }
+
+  // --- SpO2 estimation (ratio-of-ratios using AC(RMS)/DC(mean)) ---
+  double meanIR = 0, meanRed = 0;
+  for (int i = 0; i < len; ++i) { meanIR += irSeq[i]; meanRed += redSeq[i]; }
+  meanIR /= len; meanRed /= len;
+  double ssIR = 0, ssRed = 0;
+  for (int i = 0; i < len; ++i) {
+    double acIR = irSeq[i] - meanIR;
+    double acRed = redSeq[i] - meanRed;
+    ssIR += acIR * acIR;
+    ssRed += acRed * acRed;
+  }
+  double rmsIR = sqrt(ssIR / len);
+  double rmsRed = sqrt(ssRed / len);
+
+  if (rmsIR > 0.0 && meanIR > 0.0 && meanRed > 0.0) {
+    double ratio = (rmsRed / meanRed) / (rmsIR / meanIR);
+    // empirical mapping: SpO2 = A - B*ratio; tune A,B if you want different bias
+    const double A = 110.0;
+    const double B = 25.0;
+    double est = A - B * ratio;
+    if (est > 100.0) est = 100.0;
+    if (est < 50.0) est = 50.0;
+    *outSpO2 = (int)(est + 0.5);
+    *okSpO2 = true;
+  } else {
+    *okSpO2 = false;
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(200);
+  Wire.begin(SDA_PIN, SCL_PIN);
+
+  Serial.println();
+  Serial.println("MAX3010x improved SpO2 + BPM");
+  if (!particleSensor.begin(Wire)) {
+    Serial.println("MAX3010x not found. Check wiring & 3.3V.");
+    while (1) delay(1000);
+  }
+
+  // Good defaults: tweak LED currents if signal is too small/too large
+  particleSensor.setup();                    // default config
+  particleSensor.setPulseAmplitudeRed(0x1E); // try slightly lower than max first
+  particleSensor.setPulseAmplitudeIR(0x1E);
+
+  fillInitialBuffer();
+}
+
+void loop() {
+  // read new sample and overwrite oldest
+  while (!particleSensor.available()) {
+    particleSensor.check();
+    delay(1);
+  }
+  redBuffer[bufferHead] = particleSensor.getRed();
+  irBuffer[bufferHead]  = particleSensor.getIR();
+  bufferHead = (bufferHead + 1) % BUFFER_SIZE;
+
+  static unsigned long lastCompute = 0;
+  if (millis() - lastCompute >= 1000) { // compute once per second
+    lastCompute = millis();
+
+    // prepare chronological arrays for algorithm
+    static int32_t redSeq[BUFFER_SIZE];
+    static int32_t irSeq[BUFFER_SIZE];
+    int idx = bufferHead;
+    for (int i = 0; i < BUFFER_SIZE; ++i) {
+      irSeq[i] = irBuffer[idx];
+      redSeq[i] = redBuffer[idx];
+      idx = (idx + 1) % BUFFER_SIZE;
+    }
+
+    int spo2 = 0; bool okSpO2 = false;
+    int bpm  = 0; bool okBPM  = false;
+
+    computeSpO2AndHR(irSeq, redSeq, BUFFER_SIZE, &spo2, &okSpO2, &bpm, &okBPM);
+
+    Serial.println("---- Measurement ----");
+    if (okSpO2) Serial.print("SpO2: "), Serial.print(spo2), Serial.println(" %");
+    else         Serial.println("SpO2: invalid");
+
+    if (okBPM)  Serial.print("Heart Rate: "), Serial.print(bpm), Serial.println(" BPM");
+    else         Serial.println("Heart Rate: invalid");
+
+    // debug: show some signal stats (uncomment to assist tuning)
+    // double meanIR=0; for(int i=0;i<BUFFER_SIZE;i++) meanIR+=irSeq[i]; meanIR/=BUFFER_SIZE;
+    // Serial.print(" meanIR: "); Serial.println(meanIR);
+
+    Serial.println("---------------------");
+  }
+
+  delay(10); // sampling pacing (affects sampleRate measured earlier)
+}

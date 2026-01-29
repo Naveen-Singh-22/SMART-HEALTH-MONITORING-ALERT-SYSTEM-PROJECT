@@ -1,0 +1,53 @@
+#define BLYNK_TEMPLATE_ID "TMPL3A1inMF2g"
+#define BLYNK_TEMPLATE_NAME "Smart Health Monitoring and Alert System"
+#define BLYNK_AUTH_TOKEN "6ziqqsHR8Bxftp-YhtaEOqTLwVVndzh8"
+
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+const char WIFI_SSID[] = "Redmi Note 10S";
+const char WIFI_PASS[] = "00000000";
+
+// DS18B20 on D2 (GPIO4)
+#define ONE_WIRE_BUS 4
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
+// Offset value to calibrate sensor
+float TEMP_OFFSET = 10.0;   // Add +5°C (change if needed)
+
+unsigned long lastTempMillis = 0;
+
+void setup() {
+  Serial.begin(115200);
+  sensors.begin();
+
+  Serial.println("Connecting to WiFi...");
+  Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASS);
+
+  Serial.println("DS18B20 + Blynk started");
+}
+
+void loop() {
+  Blynk.run();
+
+  unsigned long now = millis();
+  if (now - lastTempMillis >= 1000) {
+    lastTempMillis = now;
+
+    sensors.requestTemperatures();
+    float tempC = sensors.getTempCByIndex(0);
+    float correctedTemp = tempC + TEMP_OFFSET;
+
+    Serial.print("Raw Temp: ");
+    Serial.print(tempC);
+    Serial.print(" °C     Corrected Temp: ");
+    Serial.print(correctedTemp);
+    Serial.println(" °C");
+
+    // Send corrected value to Blynk V2
+    Blynk.virtualWrite(V2, correctedTemp);
+  }
+}
