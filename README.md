@@ -2,6 +2,18 @@
 
 A comprehensive IoT-based health monitoring system built on NodeMCU ESP8266 that continuously monitors vital signs and sends intelligent alerts to caregivers and doctors through the Blynk cloud platform.
 
+---
+
+## 1. Introduction to the Project Working
+
+The Smart Health Monitoring & Alert System Using IoT is designed to **continuously measure key health parameters** such as heart rate, body temperature, and blood oxygen saturation (SpO₂). The system collects this data through biomedical sensors attached to the user. These values are read by a **NodeMCU ESP8266 microcontroller**, which processes the measurements and sends them to cloud platforms like Blynk and ThingSpeak through Wi-Fi.
+
+The **real-time data can be viewed on a mobile dashboard or web interface**, letting caregivers and doctors observe vital signs instantly. If any measured value crosses its safe threshold—for example, low SpO₂ or high temperature—the system automatically triggers alerts. These alerts can be delivered through **push notifications, email, or SMS**, ensuring immediate action.
+
+This project **reduces the need for repeated hospital visits**, especially for elderly patients or people with chronic illnesses, and provides a **reliable, low-cost, real-time monitoring solution** that works anytime and anywhere.
+
+---
+
 ## Overview
 
 This project creates a real-time health monitoring solution that:
