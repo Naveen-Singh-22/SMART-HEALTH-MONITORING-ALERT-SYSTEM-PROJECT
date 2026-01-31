@@ -55,6 +55,7 @@ This project creates a real-time health monitoring solution that:
 
 ### Microcontroller
 - **NodeMCU ESP8266** (main processing unit)
+- Aurduino uno can be used.
 
 ### Sensors
 - **MAX30102** - Optical pulse oximeter & heart rate sensor
