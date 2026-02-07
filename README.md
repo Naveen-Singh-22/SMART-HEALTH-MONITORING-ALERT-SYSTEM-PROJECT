@@ -397,22 +397,6 @@ If abnormal values are detected, automatic alerts are sent to caregivers and doc
 
 ---
 
-## ⚙️ Installation & Setup
-
-### 1. Board Configuration
-Add ESP8266 board support in Arduino IDE.
-
-### 2. Library Installation
-Install required libraries using Library Manager.
-
-### 3. Configure Credentials
-
-```cpp
-char WIFI_SSID[] = "YOUR_SSID";
-char WIFI_PASS[] = "YOUR_PASS";
-char BLYNK_AUTH[] = "YOUR_TOKEN";
-
-
 ## Disclaimer
 
 ⚠️ **This is a prototype system and should NOT be used as a primary medical device.** Always consult with healthcare professionals for actual medical diagnosis and treatment. This system is for monitoring and educational purposes only.
