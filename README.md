@@ -316,6 +316,102 @@ For issues, questions, or improvements:
 4. Test sensors individually with provided sketches
 
 ---
+# 🩺 Smart Health Monitoring & Alert System
+
+![Project Banner](assets/images/hardware.jpg)
+
+A comprehensive IoT-based health monitoring system built on NodeMCU ESP8266 that continuously monitors vital signs and sends intelligent alerts to caregivers and doctors.
+
+---
+
+## 📸 Project Demonstration
+
+### 🔧 Hardware Setup
+![Hardware Setup](assets/images/hardware.jpg)
+
+### 📱 Blynk Dashboard
+![Blynk Dashboard](assets/images/dashboard.png)
+
+### 💻 Serial Monitor Output
+![Serial Output](assets/images/serial.png)
+
+### 🧩 Wiring Diagram
+![Wiring Diagram](assets/images/wiring.png)
+
+---
+
+## 📖 Introduction
+
+The Smart Health Monitoring & Alert System Using IoT is designed to continuously measure key health parameters such as heart rate, body temperature, and blood oxygen saturation (SpO₂). The system uses biomedical sensors connected to a NodeMCU ESP8266 and uploads data to the cloud for remote monitoring.
+
+If abnormal values are detected, automatic alerts are sent to caregivers and doctors for immediate response.
+
+---
+
+## 🚀 Overview
+
+- Continuous monitoring of SpO₂, BPM, and temperature  
+- Intelligent alert system with rate limiting  
+- Cloud-based dashboard using Blynk  
+- Multi-user access (caretaker & doctor)
+
+---
+
+## ✨ Features
+
+### ✅ Real-time Monitoring
+- SpO₂, Heart Rate, Temperature
+
+### ✅ Smart Alerts
+- Critical condition detection  
+- Role-based notifications  
+- Custom thresholds  
+
+### ✅ Cloud Integration
+- Blynk platform  
+- Mobile & Web dashboard  
+
+### ✅ Multi-user System
+- Caretaker & Doctor access  
+- Medical logs  
+
+---
+
+## 🔧 Hardware Requirements
+
+### Microcontroller
+- NodeMCU ESP8266  
+- Arduino Uno (optional)
+
+### Sensors
+- MAX30102 (SpO₂ & BPM)  
+- DS18B20 (Temperature)
+
+---
+
+## 🧠 Software Requirements
+
+- Arduino IDE / PlatformIO  
+- Blynk  
+- ESP8266 Libraries  
+
+---
+
+## ⚙️ Installation & Setup
+
+### 1. Board Configuration
+Add ESP8266 board support in Arduino IDE.
+
+### 2. Library Installation
+Install required libraries using Library Manager.
+
+### 3. Configure Credentials
+
+```cpp
+char WIFI_SSID[] = "YOUR_SSID";
+char WIFI_PASS[] = "YOUR_PASS";
+char BLYNK_AUTH[] = "YOUR_TOKEN";
+
 
 ## Disclaimer
 
