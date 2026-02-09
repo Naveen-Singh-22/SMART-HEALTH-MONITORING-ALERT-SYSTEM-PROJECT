@@ -386,14 +386,7 @@ If abnormal values are detected, automatic alerts are sent to caregivers and doc
 ### Sensors
 - MAX30102 (SpO₂ & BPM)  
 - DS18B20 (Temperature)
-
----
-
-## 🧠 Software Requirements
-
-- Arduino IDE / PlatformIO  
-- Blynk  
-- ESP8266 Libraries  
+  
 
 ---
 
