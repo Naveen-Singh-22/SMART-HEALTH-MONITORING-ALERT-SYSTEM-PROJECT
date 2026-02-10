@@ -374,20 +374,7 @@ If abnormal values are detected, automatic alerts are sent to caregivers and doc
 ### ✅ Multi-user System
 - Caretaker & Doctor access  
 - Medical logs  
-
----
-
-## 🔧 Hardware Requirements
-
-### Microcontroller
-- NodeMCU ESP8266  
-- Arduino Uno (optional)
-
-### Sensors
-- MAX30102 (SpO₂ & BPM)  
-- DS18B20 (Temperature)
   
-
 ---
 
 ## Disclaimer
