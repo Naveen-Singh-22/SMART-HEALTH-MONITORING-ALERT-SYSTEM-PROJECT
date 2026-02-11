@@ -379,9 +379,7 @@ If abnormal values are detected, automatic alerts are sent to caregivers and doc
 
 ## Disclaimer
 
-⚠️ **This is a prototype system and should NOT be used as a primary medical device.** Always consult with healthcare professionals for actual medical diagnosis and treatment. This system is for monitoring and educational purposes only.
-
----
+⚠️ **This is a prototype system and should NOT be used as a primary medical device.** Always consult with healthcare professionals for actual medical diagnosis and treatment. This system is for monitoring and educational purposes only
 
 **Last Updated**: January 2026  
 **Version**: 1.0
