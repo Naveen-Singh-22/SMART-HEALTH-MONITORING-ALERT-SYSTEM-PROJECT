@@ -320,7 +320,7 @@ For issues, questions, or improvements:
 
 ![Project Banner](assets/images/hardware.jpg)
 
-A comprehensive IoT-based health monitoring system built on NodeMCU ESP8266 that continuously monitors vital signs and sends intelligent alerts to caregivers and doctors.
+A IoT-based health monitoring system built on NodeMCU ESP8266 that continuously monitors vital signs and sends intelligent alerts to caregivers and doctors.
 
 ---
 
